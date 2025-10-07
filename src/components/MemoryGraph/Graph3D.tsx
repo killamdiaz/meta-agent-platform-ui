@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera, Line } from "@react-three/drei";
 import { forceSimulation, forceLink, forceManyBody, forceCenter } from "d3-force-3d";
 import { GraphData, GraphNode as GraphNodeType } from "@/types/graph";
 import { GraphNode } from "./GraphNode";
+import { Points } from "./Points";
 import { Card } from "@/components/ui/card";
 
 interface Graph3DProps {
@@ -69,19 +70,7 @@ export function Graph3D({ data }: Graph3DProps) {
         <pointLight position={[10, 10, 10]} intensity={0.5} />
 
         {/* Background particles */}
-        <points>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={1000}
-              array={new Float32Array(
-                Array.from({ length: 1000 * 3 }, () => (Math.random() - 0.5) * 30)
-              )}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <pointsMaterial size={0.02} color="#00d4ff" opacity={0.3} transparent />
-        </points>
+        <Points />
 
         {/* Grid helper */}
         <gridHelper args={[20, 20, "#1a1d29", "#1a1d29"]} rotation={[Math.PI / 2, 0, 0]} />
@@ -95,27 +84,20 @@ export function Graph3D({ data }: Graph3DProps) {
             ? graphData.nodes.find(n => n.id === link.target)
             : link.target;
 
-          if (!source || !target) return null;
+          if (!source || !target || !source.x || !target.x) return null;
 
           return (
-            <line key={i}>
-              <bufferGeometry>
-                <bufferAttribute
-                  attach="attributes-position"
-                  count={2}
-                  array={new Float32Array([
-                    source.x || 0, source.y || 0, source.z || 0,
-                    target.x || 0, target.y || 0, target.z || 0,
-                  ])}
-                  itemSize={3}
-                />
-              </bufferGeometry>
-              <lineBasicMaterial
-                color={getRelationColor(link.relation)}
-                opacity={link.strength * 0.6}
-                transparent
-              />
-            </line>
+            <Line
+              key={i}
+              points={[
+                [source.x, source.y || 0, source.z || 0],
+                [target.x, target.y || 0, target.z || 0],
+              ]}
+              color={getRelationColor(link.relation)}
+              lineWidth={1}
+              opacity={link.strength * 0.6}
+              transparent
+            />
           );
         })}
 
