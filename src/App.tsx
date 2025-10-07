@@ -7,6 +7,7 @@ import { AppSidebar } from "./components/AppSidebar";
 import Overview from "./pages/Overview";
 import AgentNetwork from "./pages/AgentNetwork";
 import CommandConsole from "./pages/CommandConsole";
+import MemoryGraph from "./pages/MemoryGraph";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
@@ -25,6 +26,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Overview />} />
               <Route path="/network" element={<AgentNetwork />} />
+              <Route path="/memory" element={<MemoryGraph />} />
               <Route path="/console" element={<CommandConsole />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/help" element={<Help />} />
