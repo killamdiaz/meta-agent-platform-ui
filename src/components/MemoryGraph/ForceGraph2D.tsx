@@ -209,7 +209,26 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
         cooldownTicks={100}
         d3AlphaDecay={0.02}
         d3VelocityDecay={0.3}
-        backgroundColor="#f3f4f6"
+        backgroundColor="#0a0a0a"
+        nodeCanvasObjectMode={() => "replace"}
+        onRenderFramePre={(ctx) => {
+          // Draw dot grid background
+          const dotSpacing = 30;
+          const dotRadius = 0.8;
+          const dotColor = "#1a1a1a";
+          
+          const width = ctx.canvas.width;
+          const height = ctx.canvas.height;
+          
+          ctx.fillStyle = dotColor;
+          for (let x = 0; x < width; x += dotSpacing) {
+            for (let y = 0; y < height; y += dotSpacing) {
+              ctx.beginPath();
+              ctx.arc(x, y, dotRadius, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }
+        }}
         enableNodeDrag={true}
         enableZoomInteraction={true}
         enablePanInteraction={true}
