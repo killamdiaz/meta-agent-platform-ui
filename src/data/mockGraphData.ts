@@ -1,55 +1,103 @@
-import { GraphData } from "@/types/graph";
+import { GraphData, NodeType, NodeStatus, RelationType } from "@/types/graph";
 
-export const mockGraphData: GraphData = {
-  nodes: [
-    // Documents
-    { id: "doc_1", type: "document", label: "Client Proposal", status: "active" },
-    { id: "doc_2", type: "document", label: "Product Spec", status: "active" },
-    { id: "doc_3", type: "document", label: "Meeting Notes", status: "active" },
-    { id: "doc_4", type: "document", label: "Research Paper", status: "older" },
+// Generate a large, intricate neural network-like graph
+const generateIntricateGraph = (): GraphData => {
+  const nodes = [];
+  const links = [];
+
+  // Define clusters (like brain regions)
+  const clusters = [
+    { name: "Business Intelligence", center: { x: 0, y: 0 }, count: 25, type: "document" as NodeType },
+    { name: "Analytics", center: { x: 2, y: 1 }, count: 30, type: "memory" as NodeType },
+    { name: "Data Mining", center: { x: 1, y: -2 }, count: 20, type: "agent" as NodeType },
+    { name: "Learning Analytics", center: { x: 3, y: -1 }, count: 22, type: "memory" as NodeType },
+    { name: "Data Integration", center: { x: -3, y: 0 }, count: 18, type: "document" as NodeType },
+    { name: "Semantic Web", center: { x: -2, y: -3 }, count: 25, type: "memory" as NodeType },
+    { name: "Semantic Network", center: { x: -1, y: -4 }, count: 20, type: "memory" as NodeType },
+    { name: "Taxonomy", center: { x: 2, y: -4 }, count: 15, type: "document" as NodeType },
+  ];
+
+  let nodeIdCounter = 0;
+
+  // Generate nodes for each cluster
+  clusters.forEach((cluster) => {
+    for (let i = 0; i < cluster.count; i++) {
+      const rand = Math.random();
+      const status: NodeStatus = 
+        rand < 0.1 ? "new" :
+        rand < 0.25 ? "older" :
+        rand < 0.3 ? "expiring" :
+        rand < 0.33 ? "forgotten" : "active";
+
+      nodes.push({
+        id: `node_${nodeIdCounter}`,
+        type: cluster.type,
+        label: i === 0 ? cluster.name : `${cluster.name.split(' ')[0]} ${i}`,
+        status,
+        metadata: {
+          createdAt: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
+          tokens: Math.floor(Math.random() * 1000),
+          similarity: Math.random(),
+        },
+      });
+
+      nodeIdCounter++;
+    }
+  });
+
+  // Generate intra-cluster connections
+  let currentNodeIndex = 0;
+  clusters.forEach((cluster) => {
+    const clusterNodes = nodes.slice(currentNodeIndex, currentNodeIndex + cluster.count);
     
-    // Agents
-    { id: "agent_1", type: "agent", label: "Marketing Agent", status: "active" },
-    { id: "agent_2", type: "agent", label: "Sales Agent", status: "active" },
-    { id: "agent_3", type: "agent", label: "Support Agent", status: "active" },
-    
-    // Memories (latest)
-    { id: "mem_1", type: "memory", label: "Discussion Summary", status: "new" },
-    { id: "mem_2", type: "memory", label: "Action Items", status: "new" },
-    { id: "mem_3", type: "memory", label: "Key Insights", status: "new" },
-    { id: "mem_4", type: "memory", label: "Customer Feedback", status: "new" },
-    
-    // Memories (older)
-    { id: "mem_5", type: "memory", label: "Previous Discussion", status: "older" },
-    { id: "mem_6", type: "memory", label: "Historical Data", status: "older" },
-    { id: "mem_7", type: "memory", label: "Past Decisions", status: "older" },
-    { id: "mem_8", type: "memory", label: "Archived Notes", status: "expiring" },
-    { id: "mem_9", type: "memory", label: "Old Context", status: "forgotten" },
-  ],
-  links: [
-    // Document to Memory relationships
-    { source: "doc_1", target: "mem_1", relation: "derived", strength: 0.95 },
-    { source: "doc_2", target: "mem_2", relation: "derived", strength: 0.88 },
-    { source: "doc_3", target: "mem_3", relation: "referenced", strength: 0.76 },
-    { source: "doc_4", target: "mem_5", relation: "derived", strength: 0.82 },
-    
-    // Agent relationships
-    { source: "agent_1", target: "mem_1", relation: "updated", strength: 0.92 },
-    { source: "agent_2", target: "mem_2", relation: "updated", strength: 0.85 },
-    { source: "agent_3", target: "mem_4", relation: "updated", strength: 0.78 },
-    
-    // Memory to Memory relationships
-    { source: "mem_1", target: "mem_5", relation: "extends", strength: 0.68 },
-    { source: "mem_2", target: "mem_6", relation: "extends", strength: 0.72 },
-    { source: "mem_3", target: "mem_7", relation: "similar", strength: 0.65 },
-    
-    // Document similarities
-    { source: "doc_1", target: "doc_2", relation: "similar", strength: 0.58 },
-    { source: "doc_2", target: "doc_3", relation: "similar", strength: 0.62 },
-    
-    // Cross connections
-    { source: "agent_1", target: "doc_1", relation: "referenced", strength: 0.88 },
-    { source: "agent_2", target: "doc_2", relation: "referenced", strength: 0.91 },
-    { source: "mem_8", target: "mem_9", relation: "similar", strength: 0.45 },
-  ],
+    // Connect each node to 2-5 random nodes within the cluster
+    clusterNodes.forEach((node, i) => {
+      const connectionCount = Math.floor(Math.random() * 4) + 2;
+      for (let j = 0; j < connectionCount; j++) {
+        const targetIndex = Math.floor(Math.random() * clusterNodes.length);
+        if (targetIndex !== i) {
+          const target = clusterNodes[targetIndex];
+          const relation: RelationType = Math.random() < 0.5 ? "derived" : "referenced";
+          links.push({
+            source: node.id,
+            target: target.id,
+            relation,
+            strength: Math.random() * 0.5 + 0.3,
+          });
+        }
+      }
+    });
+
+    currentNodeIndex += cluster.count;
+  });
+
+  // Generate inter-cluster connections
+  for (let i = 0; i < clusters.length; i++) {
+    for (let j = i + 1; j < clusters.length; j++) {
+      // Connect some nodes between clusters
+      const connectionCount = Math.floor(Math.random() * 8) + 3;
+      for (let k = 0; k < connectionCount; k++) {
+        const sourceClusterStart = clusters.slice(0, i).reduce((acc, c) => acc + c.count, 0);
+        const targetClusterStart = clusters.slice(0, j).reduce((acc, c) => acc + c.count, 0);
+        
+        const sourceNode = nodes[sourceClusterStart + Math.floor(Math.random() * clusters[i].count)];
+        const targetNode = nodes[targetClusterStart + Math.floor(Math.random() * clusters[j].count)];
+        
+        if (sourceNode && targetNode) {
+          const rand = Math.random();
+          const relation: RelationType = rand < 0.3 ? "extends" : rand < 0.5 ? "updated" : "similar";
+          links.push({
+            source: sourceNode.id,
+            target: targetNode.id,
+            relation,
+            strength: Math.random() * 0.4 + 0.1,
+          });
+        }
+      }
+    }
+  }
+
+  return { nodes, links };
 };
+
+export const mockGraphData = generateIntricateGraph();

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Graph3D } from "@/components/MemoryGraph/Graph3D";
+import { ForceGraph2DComponent } from "@/components/MemoryGraph/ForceGraph2D";
 import { Legend } from "@/components/MemoryGraph/Legend";
 import { mockGraphData } from "@/data/mockGraphData";
 import { Button } from "@/components/ui/button";
@@ -45,16 +45,11 @@ export default function MemoryGraph() {
           </div>
         </div>
 
-        {/* 3D Graph */}
+        {/* Force Graph 2D */}
         <div className="h-full pt-16">
-          <Graph3D data={mockGraphData} />
+          <ForceGraph2DComponent data={mockGraphData} />
         </div>
 
-        {/* Instructions */}
-        <div className="absolute bottom-6 right-6 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-3 text-xs text-muted-foreground">
-          <div>Click and drag to rotate • Scroll to zoom</div>
-          <div>Click nodes for details • Hover for info</div>
-        </div>
       </div>
 
       {/* Right Legend Panel */}
