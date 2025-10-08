@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { GraphData, GraphNode as GraphNodeType } from "@/types/graph";
 import { Card } from "@/components/ui/card";
@@ -15,6 +15,25 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
   const [hoveredNode, setHoveredNode] = useState<GraphNodeType | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNodeType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeLinks, setActiveLinks] = useState<Set<string>>(new Set());
+
+  // Simulate neural activity by randomly activating/deactivating links
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newActiveLinks = new Set<string>();
+      const activationProbability = 0.15; // 15% of links active at any time
+      
+      data.links.forEach((link, index) => {
+        if (Math.random() < activationProbability) {
+          newActiveLinks.add(`${index}`);
+        }
+      });
+      
+      setActiveLinks(newActiveLinks);
+    }, 1500); // Change active links every 1.5 seconds
+
+    return () => clearInterval(interval);
+  }, [data.links]);
 
   const getNodeColor = (node: GraphNodeType) => {
     if (node.status === "forgotten") return "#dc2626";
@@ -34,13 +53,16 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
     return node.type === "agent" ? 3 : node.type === "document" ? 2.5 : 2;
   };
 
-  const getLinkColor = (link: any) => {
+  const getLinkColor = (link: any, index: number) => {
+    const isActive = activeLinks.has(`${index}`);
+    const baseOpacity = isActive ? 0.4 : 0.1;
+    
     switch (link.relation) {
-      case "updated": return "rgba(59, 130, 246, 0.15)";
-      case "extends": return "rgba(139, 92, 246, 0.15)";
-      case "derived": return "rgba(20, 184, 166, 0.15)";
-      case "similar": return "rgba(16, 185, 129, 0.12)";
-      default: return "rgba(100, 116, 139, 0.1)";
+      case "updated": return `rgba(59, 130, 246, ${baseOpacity})`;
+      case "extends": return `rgba(139, 92, 246, ${baseOpacity})`;
+      case "derived": return `rgba(20, 184, 166, ${baseOpacity})`;
+      case "similar": return `rgba(16, 185, 129, ${baseOpacity})`;
+      default: return `rgba(100, 116, 139, ${baseOpacity})`;
     }
   };
 
@@ -213,12 +235,23 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
             ctx.fillText(label, node.x!, node.y! + nodeSize + fontSize + 2);
           }
         }}
-        linkColor={getLinkColor}
-        linkWidth={(link: any) => link.strength * 0.8}
+        linkColor={(link) => {
+          const index = data.links.findIndex(l => l === link);
+          return getLinkColor(link, index);
+        }}
+        linkWidth={(link: any) => {
+          const index = data.links.findIndex(l => l === link);
+          const isActive = activeLinks.has(`${index}`);
+          return isActive ? link.strength * 1.2 : link.strength * 0.6;
+        }}
         linkCurvature={0.15}
-        linkDirectionalParticles={(link: any) => link.relation === "derived" ? 1 : 0}
-        linkDirectionalParticleWidth={1.5}
-        linkDirectionalParticleSpeed={0.003}
+        linkDirectionalParticles={(link: any) => {
+          const index = data.links.findIndex(l => l === link);
+          const isActive = activeLinks.has(`${index}`);
+          return isActive ? 3 : 0;
+        }}
+        linkDirectionalParticleWidth={2}
+        linkDirectionalParticleSpeed={0.006}
         onNodeClick={handleNodeClick}
         onBackgroundClick={handleBackgroundClick}
         onNodeHover={(node) => setHoveredNode(node as GraphNodeType | null)}
