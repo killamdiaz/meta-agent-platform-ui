@@ -17,31 +17,33 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const getNodeColor = (node: GraphNodeType) => {
-    if (node.status === "forgotten") return "#ef4444";
-    if (node.status === "expiring") return "#f59e0b";
-    if (node.status === "new") return "#a78bfa";
-    if (node.status === "older") return "#34d399";
+    if (node.status === "forgotten") return "#dc2626";
+    if (node.status === "expiring") return "#ea580c";
+    if (node.status === "new") return "#fbbf24";
+    if (node.status === "older") return "#10b981";
     
     switch (node.type) {
-      case "document": return "#a78bfa";
-      case "agent": return "#34d399";
-      case "memory": return "#60a5fa";
-      default: return "#9ca3af";
+      case "document": return "#8b5cf6";
+      case "agent": return "#14b8a6";
+      case "memory": return "#3b82f6";
+      default: return "#6b7280";
     }
   };
 
   const getNodeSize = (node: GraphNodeType) => {
-    return node.type === "agent" ? 6 : node.type === "document" ? 4 : 3;
+    return node.type === "agent" ? 3 : node.type === "document" ? 2.5 : 2;
   };
 
   const getLinkColor = (link: any) => {
     switch (link.relation) {
-      case "updated": return "#cbd5e1";
-      case "extends": return "#e2e8f0";
-      case "derived": return "#cbd5e1";
-      default: return "#e2e8f0";
+      case "updated": return "rgba(59, 130, 246, 0.15)";
+      case "extends": return "rgba(139, 92, 246, 0.15)";
+      case "derived": return "rgba(20, 184, 166, 0.15)";
+      case "similar": return "rgba(16, 185, 129, 0.12)";
+      default: return "rgba(100, 116, 139, 0.1)";
     }
   };
+
 
   const handleNodeClick = useCallback((node: any) => {
     setSelectedNode(node as GraphNodeType);
@@ -181,41 +183,55 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
         nodeVal={(node) => getNodeSize(node as GraphNodeType)}
         nodeCanvasObject={(node, ctx, globalScale) => {
           const label = (node as any).label;
-          const fontSize = 12 / globalScale;
+          const fontSize = 10 / globalScale;
           const nodeSize = getNodeSize(node as GraphNodeType);
+          const color = getNodeColor(node as GraphNodeType);
           
-          // Draw node
+          // Draw outer glow
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = color;
+          
+          // Draw node circle
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
-          ctx.fillStyle = getNodeColor(node as GraphNodeType);
+          ctx.fillStyle = color;
           ctx.fill();
           
-          // Draw label for larger nodes or when zoomed in
-          if (nodeSize > 4 || globalScale > 2) {
+          // Draw subtle ring
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+          
+          // Draw label for important nodes when zoomed in
+          if ((nodeSize > 2.5 || globalScale > 3) && label) {
+            ctx.shadowBlur = 0;
             ctx.font = `${fontSize}px Inter, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = "#ffffff";
-            ctx.fillText(label, node.x!, node.y! + nodeSize + fontSize);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.fillText(label, node.x!, node.y! + nodeSize + fontSize + 2);
           }
         }}
         linkColor={getLinkColor}
-        linkWidth={(link: any) => link.strength * 1.5}
-        linkCurvature={0.2}
-        linkDirectionalParticles={0}
+        linkWidth={(link: any) => link.strength * 0.8}
+        linkCurvature={0.15}
+        linkDirectionalParticles={(link: any) => link.relation === "derived" ? 1 : 0}
+        linkDirectionalParticleWidth={1.5}
+        linkDirectionalParticleSpeed={0.003}
         onNodeClick={handleNodeClick}
         onBackgroundClick={handleBackgroundClick}
         onNodeHover={(node) => setHoveredNode(node as GraphNodeType | null)}
-        cooldownTicks={100}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
-        backgroundColor="#0a0a0a"
+        cooldownTicks={150}
+        d3AlphaDecay={0.015}
+        d3VelocityDecay={0.4}
+        backgroundColor="#0B0D17"
         nodeCanvasObjectMode={() => "replace"}
         onRenderFramePre={(ctx) => {
-          // Draw dot grid background
-          const dotSpacing = 30;
-          const dotRadius = 0.8;
-          const dotColor = "#1a1a1a";
+          // Draw subtle dot grid background
+          const dotSpacing = 40;
+          const dotRadius = 0.5;
+          const dotColor = "rgba(148, 163, 184, 0.08)";
           
           const width = ctx.canvas.width;
           const height = ctx.canvas.height;
