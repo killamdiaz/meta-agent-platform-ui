@@ -15,22 +15,31 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
   const [hoveredNode, setHoveredNode] = useState<GraphNodeType | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNodeType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeLinks, setActiveLinks] = useState<Set<string>>(new Set());
+  const [activeLinks, setActiveLinks] = useState<Map<string, number>>(new Map());
+
+  // Create stable link key
+  const getLinkKey = (link: any) => {
+    const sourceId = typeof link.source === "string" ? link.source : link.source?.id;
+    const targetId = typeof link.target === "string" ? link.target : link.target?.id;
+    return `${sourceId}-${targetId}`;
+  };
 
   // Simulate neural activity by randomly activating/deactivating links
   useEffect(() => {
     const interval = setInterval(() => {
-      const newActiveLinks = new Set<string>();
-      const activationProbability = 0.15; // 15% of links active at any time
+      const newActiveLinks = new Map<string, number>();
+      const activationProbability = 0.12; // 12% of links active at any time
       
-      data.links.forEach((link, index) => {
+      data.links.forEach((link) => {
         if (Math.random() < activationProbability) {
-          newActiveLinks.add(`${index}`);
+          const key = getLinkKey(link);
+          // Store timestamp for smooth animation
+          newActiveLinks.set(key, Date.now());
         }
       });
       
       setActiveLinks(newActiveLinks);
-    }, 1500); // Change active links every 1.5 seconds
+    }, 2000); // Change active links every 2 seconds
 
     return () => clearInterval(interval);
   }, [data.links]);
@@ -53,9 +62,10 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
     return node.type === "agent" ? 3 : node.type === "document" ? 2.5 : 2;
   };
 
-  const getLinkColor = (link: any, index: number) => {
-    const isActive = activeLinks.has(`${index}`);
-    const baseOpacity = isActive ? 0.4 : 0.1;
+  const getLinkColor = (link: any) => {
+    const key = getLinkKey(link);
+    const isActive = activeLinks.has(key);
+    const baseOpacity = isActive ? 0.5 : 0.12;
     
     switch (link.relation) {
       case "updated": return `rgba(59, 130, 246, ${baseOpacity})`;
@@ -235,23 +245,33 @@ export function ForceGraph2DComponent({ data }: ForceGraph2DProps) {
             ctx.fillText(label, node.x!, node.y! + nodeSize + fontSize + 2);
           }
         }}
-        linkColor={(link) => {
-          const index = data.links.findIndex(l => l === link);
-          return getLinkColor(link, index);
-        }}
+        linkColor={getLinkColor}
         linkWidth={(link: any) => {
-          const index = data.links.findIndex(l => l === link);
-          const isActive = activeLinks.has(`${index}`);
-          return isActive ? link.strength * 1.2 : link.strength * 0.6;
+          const key = getLinkKey(link);
+          const isActive = activeLinks.has(key);
+          return isActive ? link.strength * 1.5 : link.strength * 0.6;
         }}
         linkCurvature={0.15}
         linkDirectionalParticles={(link: any) => {
-          const index = data.links.findIndex(l => l === link);
-          const isActive = activeLinks.has(`${index}`);
-          return isActive ? 3 : 0;
+          const key = getLinkKey(link);
+          const isActive = activeLinks.has(key);
+          return isActive ? 2 : 0;
         }}
-        linkDirectionalParticleWidth={2}
-        linkDirectionalParticleSpeed={0.006}
+        linkDirectionalParticleWidth={2.5}
+        linkDirectionalParticleSpeed={0.005}
+        linkDirectionalParticleColor={(link: any) => {
+          const key = getLinkKey(link);
+          const isActive = activeLinks.has(key);
+          if (!isActive) return "rgba(0,0,0,0)";
+          
+          switch (link.relation) {
+            case "updated": return "rgba(96, 165, 250, 0.9)";
+            case "extends": return "rgba(167, 139, 250, 0.9)";
+            case "derived": return "rgba(45, 212, 191, 0.9)";
+            case "similar": return "rgba(52, 211, 153, 0.9)";
+            default: return "rgba(148, 163, 184, 0.8)";
+          }
+        }}
         onNodeClick={handleNodeClick}
         onBackgroundClick={handleBackgroundClick}
         onNodeHover={(node) => setHoveredNode(node as GraphNodeType | null)}
