@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -36,6 +36,7 @@ const initialNodes: Node[] = [
 const initialEdges: Edge[] = [];
 
 export default function AgentNetwork() {
+  const [showMinimap, setShowMinimap] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const agents = useAgentStore((state) => state.agents);
@@ -81,6 +82,10 @@ export default function AgentNetwork() {
     selectAgent(null);
   };
 
+  const onMove = () => {
+    setShowMinimap(true);
+  };
+
   return (
     <div className="h-screen w-full flex bg-[#0b0b0f]">
       {/* Main Canvas */}
@@ -93,6 +98,7 @@ export default function AgentNetwork() {
           onConnect={onConnect}
           onNodeDragStop={onNodeDragStop}
           onPaneClick={onPaneClick}
+          onMove={onMove}
           nodeTypes={nodeTypes}
           fitView
           className="bg-[#0b0b0f] dot-grid-background"
@@ -108,14 +114,17 @@ export default function AgentNetwork() {
             color="#222"
             className="opacity-50"
           />
-          <Controls className="bg-card border border-border rounded-lg" />
-          <MiniMap
-            className="bg-card border border-border rounded-lg"
-            nodeColor={(node) => {
-              if (node.type === 'start') return '#10b981';
-              return '#3b82f6';
-            }}
-          />
+          <Controls className="bg-card/80 backdrop-blur-sm border border-border rounded-lg" />
+          {showMinimap && (
+            <MiniMap
+              className="!bg-card/60 !backdrop-blur-sm border border-border/50 rounded-lg"
+              maskColor="rgba(11, 11, 15, 0.6)"
+              nodeColor={(node) => {
+                if (node.type === 'start') return '#10b981';
+                return '#3b82f6';
+              }}
+            />
+          )}
         </ReactFlow>
 
         {/* Floating Add Button */}
