@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Send, Plus, Sparkles } from "lucide-react";
+import { Plus, Mic, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Message = {
@@ -37,6 +37,13 @@ export default function CommandConsole() {
     }, 1500);
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen">
       {/* Messages Area */}
@@ -46,11 +53,11 @@ export default function CommandConsole() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-8 h-8 text-atlas-glow" />
             </div>
-            <div className="text-center space-y-2">
-              <h1 className="text-4xl font-bold">
+            <div className="text-center space-y-1">
+              <h1 className="text-4xl font-normal">
                 <span className="text-atlas-glow">Hello, Founder</span>
               </h1>
-              <p className="text-xl text-muted-foreground">What should we build today?</p>
+              <p className="text-3xl font-normal text-muted-foreground/80">What should we build today?</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-8 max-w-2xl">
               {[
@@ -103,35 +110,40 @@ export default function CommandConsole() {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border bg-background p-6">
+      <div className="bg-background p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="relative flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="text-muted-foreground hover:text-atlas-glow"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask Atlas Core..."
-              className="flex-1 bg-muted border-0 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-glow/50"
-            />
-            <Button
-              onClick={handleSend}
-              disabled={!input.trim()}
-              className="bg-atlas-glow hover:bg-atlas-glow/80 text-primary-foreground rounded-xl"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+          <div className="relative bg-card/40 backdrop-blur-sm border border-border/50 rounded-[28px] hover:border-border transition-colors">
+            <div className="flex items-center gap-3 px-5 py-4">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground hover:bg-transparent h-9 w-9"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask Atlas Core..."
+                className="flex-1 bg-transparent border-0 text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+              />
+              <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted/50">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                <span>Tools</span>
+              </button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground hover:bg-transparent h-9 w-9"
+              >
+                <Mic className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-3">
-            Atlas Core can orchestrate your AI workforce
-          </p>
         </div>
       </div>
     </div>
