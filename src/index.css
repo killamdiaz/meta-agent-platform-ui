@@ -66,3 +66,9 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Dot grid background for Agent Network canvas */
+.dot-grid-background {
+  background-image: radial-gradient(circle, #222 1px, transparent 1px);
+  background-size: 20px 20px;
+}
