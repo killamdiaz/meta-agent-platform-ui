@@ -8,6 +8,7 @@ import Overview from "./pages/Overview";
 import AgentNetwork from "./pages/AgentNetwork";
 import CommandConsole from "./pages/CommandConsole";
 import MemoryGraph from "./pages/MemoryGraph";
+import Exhausts from "./pages/Exhausts";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
@@ -28,6 +29,7 @@ const App = () => (
               <Route path="/network" element={<AgentNetwork />} />
               <Route path="/memory" element={<MemoryGraph />} />
               <Route path="/console" element={<CommandConsole />} />
+              <Route path="/exhausts" element={<Exhausts />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/help" element={<Help />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
