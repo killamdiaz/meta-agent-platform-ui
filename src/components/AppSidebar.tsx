@@ -1,4 +1,4 @@
-import { Network, LayoutDashboard, MessageSquare, Settings, HelpCircle, Brain } from "lucide-react";
+import { Network, LayoutDashboard, MessageSquare, Settings, HelpCircle, Brain, Radio } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +7,7 @@ const navigation = [
   { name: "Memory Graph", href: "/memory", icon: Brain },
   { name: "Overview", href: "/", icon: LayoutDashboard },
   { name: "Command Console", href: "/console", icon: MessageSquare },
+  { name: "Exhausts", href: "/exhausts", icon: Radio },
 ];
 
 const bottomNav = [
