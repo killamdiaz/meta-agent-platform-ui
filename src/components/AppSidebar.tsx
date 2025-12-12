@@ -1,4 +1,4 @@
-import { Network, LayoutDashboard, MessageSquare, Settings, HelpCircle, Brain, Radio } from "lucide-react";
+import { Network, LayoutDashboard, MessageSquare, Settings, HelpCircle, Brain, Radio, Plug, Package } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,8 @@ const navigation = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
   { name: "Command Console", href: "/console", icon: MessageSquare },
   { name: "Exhausts", href: "/exhausts", icon: Radio },
+  { name: "Marketplace", href: "/marketplace", icon: Plug },
+  { name: "My Connectors", href: "/my-connectors", icon: Package },
 ];
 
 const bottomNav = [
