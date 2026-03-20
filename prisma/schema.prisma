@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum ToolType {
+  HTTP
+  PYTHON
+  JAVASCRIPT
+  SQL
+  BUILTIN
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  name              String?
+  avatarUrl         String?
+  passwordHash      String?
+  emailVerified     Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  organizations     UserOrg[]
+  apiKeys           ApiKey[]
+  executions        Execution[]
+  auditLogs         AuditLog[]
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Organization {
+  id                String             @id @default(cuid())
+  name              String
+  slug              String             @unique
+  logoUrl           String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  members           UserOrg[]
+  networks          Network[]
+  agents            Agent[]
+  tools             Tool[]
+  providerCredentials ProviderCredential[]
+  apiKeys           ApiKey[]
+  auditLogs         AuditLog[]
+
+  @@index([slug])
+  @@index([createdAt])
+}
+
+model UserOrg {
+  id             String       @id @default(cuid())
+  userId         String
+  orgId          String
+  role           OrgRole      @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([userId])
+  @@index([orgId])
+}
+
+model Network {
+  id          String           @id @default(cuid())
+  orgId       String
+  name        String
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  org         Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  versions    NetworkVersion[]
+  executions  Execution[]
+
+  @@index([orgId])
+  @@index([createdAt])
+}
+
+model NetworkVersion {
+  id          String     @id @default(cuid())
+  networkId   String
+  version     Int
+  snapshot    Json
+  createdAt   DateTime   @default(now())
+  network     Network    @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  nodes       Node[]
+  edges       Edge[]
+
+  @@unique([networkId, version])
+  @@index([networkId])
+  @@index([createdAt])
+}
+
+model Node {
+  id               String         @id @default(cuid())
+  networkVersionId String
+  agentId          String?
+  label            String
+  type             String
+  positionX        Float
+  positionY        Float
+  config           Json           @default("{}")
+  createdAt        DateTime       @default(now())
+  networkVersion   NetworkVersion @relation(fields: [networkVersionId], references: [id], onDelete: Cascade)
+  agent            Agent?         @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  outgoingEdges    Edge[]         @relation("EdgeSource")
+  incomingEdges    Edge[]         @relation("EdgeTarget")
+
+  @@index([networkVersionId])
+  @@index([agentId])
+}
+
+model Edge {
+  id               String         @id @default(cuid())
+  networkVersionId String
+  sourceNodeId     String
+  targetNodeId     String
+  label            String?
+  config           Json           @default("{}")
+  createdAt        DateTime       @default(now())
+  networkVersion   NetworkVersion @relation(fields: [networkVersionId], references: [id], onDelete: Cascade)
+  sourceNode       Node           @relation("EdgeSource", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  targetNode       Node           @relation("EdgeTarget", fields: [targetNodeId], references: [id], onDelete: Cascade)
+
+  @@index([networkVersionId])
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+}
+
+model Agent {
+  id           String      @id @default(cuid())
+  orgId        String
+  name         String
+  description  String?
+  systemPrompt String?
+  model        String
+  temperature  Float       @default(0.7)
+  maxTokens    Int?
+  config       Json        @default("{}")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  agentTools   AgentTool[]
+  nodes        Node[]
+  executionSteps ExecutionStep[]
+
+  @@index([orgId])
+  @@index([createdAt])
+}
+
+model AgentTool {
+  id        String   @id @default(cuid())
+  agentId   String
+  toolId    String
+  config    Json     @default("{}")
+  createdAt DateTime @default(now())
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  tool      Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, toolId])
+  @@index([agentId])
+  @@index([toolId])
+}
+
+model Tool {
+  id          String     @id @default(cuid())
+  orgId       String
+  name        String
+  description String?
+  type        ToolType
+  definition  Json
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  agentTools  AgentTool[]
+
+  @@index([orgId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Execution {
+  id          String          @id @default(cuid())
+  networkId   String
+  userId      String?
+  status      ExecutionStatus @default(PENDING)
+  input       Json            @default("{}")
+  output      Json?
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  network     Network         @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  steps       ExecutionStep[]
+
+  @@index([networkId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ExecutionStep {
+  id          String      @id @default(cuid())
+  executionId String
+  agentId     String?
+  nodeId      String?
+  status      StepStatus  @default(PENDING)
+  input       Json        @default("{}")
+  output      Json?
+  error       String?
+  tokens      Int?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  execution   Execution   @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  agent       Agent?      @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([executionId])
+  @@index([agentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ApiKey {
+  id          String       @id @default(cuid())
+  orgId       String
+  userId      String
+  name        String
+  keyHash     String       @unique
+  prefix      String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime     @default(now())
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([keyHash])
+  @@index([createdAt])
+}
+
+model ProviderCredential {
+  id         String       @id @default(cuid())
+  orgId      String
+  provider   String
+  name       String
+  encrypted  String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, provider, name])
+  @@index([orgId])
+  @@index([provider])
+}
+
+model AuditLog {
+  id         String       @id @default(cuid())
+  orgId      String
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  metadata   Json         @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime     @default(now())
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user       User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
