@@ -1,0 +1,445 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto]
+}
+
+enum ConnectorStatus {
+  draft
+  published
+  deprecated
+  archived
+}
+
+enum ConnectorDraftStatus {
+  in_progress
+  review
+  rejected
+  approved
+}
+
+enum MarketplaceListingStatus {
+  pending
+  active
+  suspended
+  removed
+}
+
+enum StreamStatus {
+  active
+  paused
+  terminated
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum TicketPriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum AiJobStatus {
+  queued
+  running
+  succeeded
+  failed
+  cancelled
+}
+
+enum FindingSeverity {
+  info
+  low
+  medium
+  high
+  critical
+}
+
+enum FindingStatus {
+  open
+  acknowledged
+  resolved
+  suppressed
+}
+
+enum AuditAction {
+  create
+  read
+  update
+  delete
+  login
+  logout
+  publish
+  approve
+  reject
+  revoke
+}
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String    @unique
+  passwordHash   String?   @map("password_hash")
+  displayName    String?   @map("display_name")
+  avatarUrl      String?   @map("avatar_url")
+  orgId          String?   @map("org_id") @db.Uuid
+  role           String    @default("member")
+  emailVerified  Boolean   @default(false) @map("email_verified")
+  lastLoginAt    DateTime? @map("last_login_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  org              Organization?      @relation(fields: [orgId], references: [id])
+  connectorDrafts  ConnectorDraft[]
+  tickets          Ticket[]
+  ticketComments   TicketComment[]
+  aiJobs           AiJob[]
+  auditEvents      AuditEvent[]
+  streamTokens     StreamToken[]
+
+  @@index([orgId])
+  @@index([email])
+  @@map("users")
+}
+
+model Organization {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String    @unique
+  name        String
+  logoUrl     String?   @map("logo_url")
+  plan        String    @default("free")
+  metadata    Json?     @default("{}")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  users                User[]
+  connectors           Connector[]
+  connectorDrafts      ConnectorDraft[]
+  marketplaceListings  MarketplaceListing[]
+  streams              Stream[]
+  tickets              Ticket[]
+  aiJobs               AiJob[]
+  findings             Finding[]
+  memoryNodes          MemoryNode[]
+  auditEvents          AuditEvent[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+model Connector {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId        String          @map("org_id") @db.Uuid
+  name         String
+  slug         String
+  version      String          @default("1.0.0")
+  description  String?
+  status       ConnectorStatus @default(draft)
+  schema       Json?           @default("{}")
+  configSchema Json?           @default("{}") @map("config_schema")
+  metadata     Json?           @default("{}")
+  publishedAt  DateTime?       @map("published_at")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  deletedAt    DateTime?       @map("deleted_at")
+
+  org                 Organization         @relation(fields: [orgId], references: [id])
+  drafts              ConnectorDraft[]
+  files               ConnectorFile[]
+  marketplaceListings MarketplaceListing[]
+  streams             Stream[]
+
+  @@unique([orgId, slug, version])
+  @@index([orgId])
+  @@index([status])
+  @@map("connectors")
+}
+
+model ConnectorDraft {
+  id          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  connectorId String               @map("connector_id") @db.Uuid
+  orgId       String               @map("org_id") @db.Uuid
+  authorId    String               @map("author_id") @db.Uuid
+  status      ConnectorDraftStatus @default(in_progress)
+  diff        Json?                @default("{}")
+  notes       String?
+  reviewedBy  String?              @map("reviewed_by") @db.Uuid
+  reviewedAt  DateTime?            @map("reviewed_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  connector ConnectorDraft? @ignore
+  conn      Connector       @relation(fields: [connectorId], references: [id])
+  org       Organization    @relation(fields: [orgId], references: [id])
+  author    User            @relation(fields: [authorId], references: [id])
+
+  @@index([connectorId])
+  @@index([orgId])
+  @@index([authorId])
+  @@map("connector_drafts")
+}
+
+model ConnectorFile {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  connectorId String   @map("connector_id") @db.Uuid
+  filename    String
+  mimeType    String?  @map("mime_type")
+  sizeBytes   BigInt?  @map("size_bytes")
+  storageKey  String   @map("storage_key")
+  checksum    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  connector Connector @relation(fields: [connectorId], references: [id])
+
+  @@index([connectorId])
+  @@map("connector_files")
+}
+
+model MarketplaceListing {
+  id          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  connectorId String                   @map("connector_id") @db.Uuid
+  orgId       String                   @map("org_id") @db.Uuid
+  status      MarketplaceListingStatus @default(pending)
+  title       String
+  summary     String?
+  tags        String[]                 @default([])
+  priceModel  String?                  @map("price_model")
+  metadata    Json?                    @default("{}")
+  publishedAt DateTime?                @map("published_at")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  updatedAt   DateTime                 @updatedAt @map("updated_at")
+
+  connector Connector    @relation(fields: [connectorId], references: [id])
+  org       Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@index([status])
+  @@index([tags])
+  @@map("marketplace_listings")
+}
+
+model Stream {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId       String       @map("org_id") @db.Uuid
+  connectorId String?      @map("connector_id") @db.Uuid
+  name        String
+  status      StreamStatus @default(active)
+  config      Json?        @default("{}")
+  metadata    Json?        @default("{}")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  org       Organization  @relation(fields: [orgId], references: [id])
+  connector Connector?    @relation(fields: [connectorId], references: [id])
+  tokens    StreamToken[]
+
+  @@index([orgId])
+  @@index([connectorId])
+  @@map("streams")
+}
+
+model StreamToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  streamId   String    @map("stream_id") @db.Uuid
+  userId     String?   @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  label      String?
+  scopes     String[]  @default([])
+  expiresAt  DateTime? @map("expires_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  stream Stream @relation(fields: [streamId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([streamId])
+  @@index([tokenHash])
+  @@map("stream_tokens")
+}
+
+/// Partitioned by day on received_at. Partition management handled by pg_partman via raw SQL migration.
+model StreamEvent {
+  id         BigInt   @default(autoincrement())
+  streamId   String   @map("stream_id") @db.Uuid
+  seq        BigInt
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz
+  payload    Json
+  headers    Json?    @default("{}")
+  sizeBytes  Int?     @map("size_bytes")
+
+  @@id([id, receivedAt])
+  @@index([streamId, receivedAt(sort: Desc)], map: "idx_stream_events_stream_received")
+  @@index([streamId, seq], map: "idx_stream_events_stream_seq")
+  @@map("stream_events")
+}
+
+model Ticket {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId       String         @map("org_id") @db.Uuid
+  authorId    String         @map("author_id") @db.Uuid
+  title       String
+  description String?
+  status      TicketStatus   @default(open)
+  priority    TicketPriority @default(medium)
+  assigneeId  String?        @map("assignee_id") @db.Uuid
+  tags        String[]       @default([])
+  metadata    Json?          @default("{}")
+  resolvedAt  DateTime?      @map("resolved_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  org      Organization    @relation(fields: [orgId], references: [id])
+  author   User            @relation(fields: [authorId], references: [id])
+  comments TicketComment[]
+
+  @@index([orgId])
+  @@index([status])
+  @@index([assigneeId])
+  @@map("tickets")
+}
+
+model TicketComment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId  String   @map("ticket_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  body      String
+  internal  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_comments")
+}
+
+model AiJob {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId       String      @map("org_id") @db.Uuid
+  userId      String?     @map("user_id") @db.Uuid
+  kind        String
+  status      AiJobStatus @default(queued)
+  priority    Int         @default(0)
+  input       Json?       @default("{}")
+  output      Json?
+  errorMsg    String?     @map("error_msg")
+  attempts    Int         @default(0)
+  startedAt   DateTime?   @map("started_at")
+  completedAt DateTime?   @map("completed_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  org      Organization @relation(fields: [orgId], references: [id])
+  user     User?        @relation(fields: [userId], references: [id])
+  findings Finding[]
+
+  @@index([orgId])
+  @@index([status])
+  @@index([kind])
+  @@map("ai_jobs")
+}
+
+model Finding {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId        String         @map("org_id") @db.Uuid
+  aiJobId      String?        @map("ai_job_id") @db.Uuid
+  title        String
+  description  String?
+  severity     FindingSeverity @default(info)
+  status       FindingStatus   @default(open)
+  resourceType String?        @map("resource_type")
+  resourceId   String?        @map("resource_id")
+  evidence     Json?          @default("{}")
+  remediations Json?          @default("{}") @map("remediations")
+  acknowledgedAt DateTime?    @map("acknowledged_at")
+  resolvedAt   DateTime?      @map("resolved_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  org   Organization @relation(fields: [orgId], references: [id])
+  aiJob AiJob?       @relation(fields: [aiJobId], references: [id])
+
+  @@index([orgId])
+  @@index([severity])
+  @@index([status])
+  @@index([aiJobId])
+  @@map("findings")
+}
+
+model MemoryNode {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  kind        String
+  label       String
+  content     String?
+  embedding   Bytes?
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  org          Organization  @relation(fields: [orgId], references: [id])
+  outboundEdges MemoryEdge[] @relation("EdgeSource")
+  inboundEdges  MemoryEdge[] @relation("EdgeTarget")
+
+  @@index([orgId])
+  @@index([kind])
+  @@map("memory_nodes")
+}
+
+model MemoryEdge {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId   String   @map("source_id") @db.Uuid
+  targetId   String   @map("target_id") @db.Uuid
+  relation   String
+  weight     Float    @default(1.0)
+  metadata   Json?    @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  source MemoryNode @relation("EdgeSource", fields: [sourceId], references: [id])
+  target MemoryNode @relation("EdgeTarget", fields: [targetId], references: [id])
+
+  @@unique([sourceId, targetId, relation])
+  @@index([sourceId])
+  @@index([targetId])
+  @@map("memory_edges")
+}
+
+model AuditEvent {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId        String      @map("org_id") @db.Uuid
+  actorId      String?     @map("actor_id") @db.Uuid
+  action       AuditAction
+  resourceType String      @map("resource_type")
+  resourceId   String?     @map("resource_id")
+  ipAddress    String?     @map("ip_address")
+  userAgent    String?     @map("user_agent")
+  before       Json?
+  after        Json?
+  metadata     Json?       @default("{}")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  org   Organization @relation(fields: [orgId], references: [id])
+  actor User?        @relation(fields: [actorId], references: [id])
+
+  @@index([orgId])
+  @@index([actorId])
+  @@index([action])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("audit_events")
+}
